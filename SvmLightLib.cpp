@@ -336,6 +336,10 @@ SVMLIGHTLIB_API void SaveModel(int model_id, char *file_name)
 SVMLIGHTLIB_API int LoadModel(char *file_name)
 {
 	MODEL *model = read_model(file_name);
+	if (model->kernel_parm.kernel_type == LINEAR && !model->lin_weights) 
+	{ 
+		add_weight_vector_to_linear_model(model); 
+	}
 	// register the model
 	{
 		LOCK(lock_models);
@@ -457,6 +461,10 @@ SVMLIGHTLIB_API int LoadModelBin(char *file_name) // modified read_model
 		delete[] comment;
 	}
 	model_file.close();
+	if (model->kernel_parm.kernel_type == LINEAR && !model->lin_weights) 
+	{ 
+		add_weight_vector_to_linear_model(model); 
+	}
 	if (verbosity >= 1)
 	{
 		fprintf(stdout, "OK. (%d support vectors read)\n", (int)(model->sv_num - 1));
@@ -566,6 +574,10 @@ SVMLIGHTLIB_API int LoadModelBinCallback(ReadByteCallback callback) // callback 
 		model->supvec[i] = create_example(-1, 0, 0, 0.0, create_svector(words, comment, 1.0));
 		delete[] comment;
 	}
+	if (model->kernel_parm.kernel_type == LINEAR && !model->lin_weights) 
+	{ 
+		add_weight_vector_to_linear_model(model); 
+	}
 	if (verbosity >= 1)
 	{
 		fprintf(stdout, "OK. (%d support vectors read)\n", (int)(model->sv_num - 1));
@@ -596,10 +608,6 @@ SVMLIGHTLIB_API void _Classify(char *_args)
 SVMLIGHTLIB_API void Classify(int model_id, int feature_vector_count, int *feature_vectors)
 {
 	MODEL *model = GetModel(model_id);
-	if (model->kernel_parm.kernel_type == LINEAR && !model->lin_weights)
-	{
-		add_weight_vector_to_linear_model(model); 
-	}
 	for (int i = 0; i < feature_vector_count; i++)
 	{
 		LabeledFeatureVector *feature_vector = GetFeatureVector(feature_vectors[i]);
@@ -638,6 +646,68 @@ SVMLIGHTLIB_API void DeleteModel(int id)
 	MODEL *model = models[id];
 	free_model(model, 1);
 	models.erase(id);
+}
+
+SVMLIGHTLIB_API double GetHyperplaneBias(int model_id)
+{
+	MODEL *model = GetModel(model_id);
+	return model->b;	
+}
+
+SVMLIGHTLIB_API int GetSupportVectorCount(int model_id)
+{
+	MODEL *model = GetModel(model_id);
+	return model->sv_num - 1;
+}
+
+SVMLIGHTLIB_API int GetSupportVectorFeatureCount(int model_id, int sup_vec_idx)
+{	
+	MODEL *model = GetModel(model_id);
+	int count = 0;
+	while (model->supvec[sup_vec_idx + 1]->fvec->words[count].wnum) { count++; }
+	return count;
+}
+
+SVMLIGHTLIB_API int GetSupportVectorFeature(int model_id, int sup_vec_idx, int feature_idx)
+{
+	MODEL *model = GetModel(model_id);
+	return model->supvec[sup_vec_idx + 1]->fvec->words[feature_idx].wnum - 1;
+}
+
+SVMLIGHTLIB_API float GetSupportVectorWeight(int model_id, int sup_vec_idx, int feature_idx)
+{
+	MODEL *model = GetModel(model_id);
+	return model->supvec[sup_vec_idx + 1]->fvec->words[feature_idx].weight;
+}
+
+SVMLIGHTLIB_API double GetSupportVectorAlpha(int model_id, int sup_vec_idx)
+{
+	MODEL *model = GetModel(model_id);
+	return model->alpha[sup_vec_idx + 1];
+}
+
+SVMLIGHTLIB_API int GetSupportVectorIndex(int model_id, int sup_vec_idx)
+{
+	MODEL *model = GetModel(model_id);
+	return model->supvec[sup_vec_idx + 1]->docnum;
+}
+
+SVMLIGHTLIB_API int GetKernelType(int model_id)
+{
+	MODEL *model = GetModel(model_id);
+	return model->kernel_parm.kernel_type;
+}
+
+SVMLIGHTLIB_API int GetFeatureCount(int model_id)
+{
+	MODEL *model = GetModel(model_id);
+	return model->totwords; 
+}
+
+SVMLIGHTLIB_API double GetLinearWeight(int model_id, int feature_idx)
+{
+	MODEL *model = GetModel(model_id);
+	return model->lin_weights[feature_idx + 1];
 }
 
 SVMLIGHTLIB_API void _TrainMulticlassModel(char *_args)

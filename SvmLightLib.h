@@ -28,7 +28,7 @@ typedef void (__stdcall *WriteByteCallback)(char byte);
 typedef char (__stdcall *ReadByteCallback)();
 
 // label is 1 or -1 for inductive binary SVM; 1, -1, or 0 (unlabeled) for transductive binary SVM; 
-// a positive integer for multiclass SVM; a real value for SVM regression
+// positive integer for multiclass SVM; real value for SVM regression
 SVMLIGHTLIB_API int NewFeatureVector(int feature_count, int *features, float *weights, double label);
 SVMLIGHTLIB_API void DeleteFeatureVector(int id);
 SVMLIGHTLIB_API int GetFeatureVectorFeatureCount(int feature_vector_id);
@@ -50,6 +50,16 @@ SVMLIGHTLIB_API int LoadModelBinCallback(ReadByteCallback callback);
 SVMLIGHTLIB_API void _Classify(char *args);
 SVMLIGHTLIB_API void Classify(int model_id, int feature_vector_count, int *feature_vectors);
 SVMLIGHTLIB_API void DeleteModel(int id);
+SVMLIGHTLIB_API double GetHyperplaneBias(int model_id);
+SVMLIGHTLIB_API int GetSupportVectorCount(int model_id);
+SVMLIGHTLIB_API int GetSupportVectorFeatureCount(int model_id, int sup_vec_idx);
+SVMLIGHTLIB_API int GetSupportVectorFeature(int model_id, int sup_vec_idx, int feature_idx);
+SVMLIGHTLIB_API float GetSupportVectorWeight(int model_id, int sup_vec_idx, int feature_idx);
+SVMLIGHTLIB_API double GetSupportVectorAlpha(int model_id, int sup_vec_idx);
+SVMLIGHTLIB_API int GetSupportVectorIndex(int model_id, int sup_vec_idx);
+SVMLIGHTLIB_API int GetKernelType(int model_id);
+SVMLIGHTLIB_API int GetFeatureCount(int model_id);
+SVMLIGHTLIB_API double GetLinearWeight(int model_id, int feature_idx);
 
 SVMLIGHTLIB_API void _TrainMulticlassModel(char *args);
 SVMLIGHTLIB_API int TrainMulticlassModel(char *args, int feature_vector_count, int *feature_vectors);
