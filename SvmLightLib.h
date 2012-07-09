@@ -57,7 +57,7 @@ SVMLIGHTLIB_API int GetSupportVectorFeature(int model_id, int sup_vec_idx, int f
 SVMLIGHTLIB_API float GetSupportVectorWeight(int model_id, int sup_vec_idx, int feature_idx);
 SVMLIGHTLIB_API double GetSupportVectorAlpha(int model_id, int sup_vec_idx);
 SVMLIGHTLIB_API int GetSupportVectorIndex(int model_id, int sup_vec_idx);
-SVMLIGHTLIB_API int GetKernelType(int model_id);
+//SVMLIGHTLIB_API int GetKernelType(int model_id);
 SVMLIGHTLIB_API int GetFeatureCount(int model_id);
 SVMLIGHTLIB_API double GetLinearWeight(int model_id, int feature_idx);
 

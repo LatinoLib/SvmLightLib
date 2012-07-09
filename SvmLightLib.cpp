@@ -616,7 +616,6 @@ SVMLIGHTLIB_API void Classify(int model_id, int feature_vector_count, int *featu
 			SvmLight::WORD *word;
 			for (int j = 0; (word = &feature_vector->second->words[j])->wnum != 0; j++)
 			{
-				assert(word->wnum <= model->totwords);
 				if (word->wnum > model->totwords) { word->wnum = 0; }
 			}
 			DOC *doc = create_example(-1, 0, 0, 0, feature_vector->second);
@@ -692,11 +691,11 @@ SVMLIGHTLIB_API int GetSupportVectorIndex(int model_id, int sup_vec_idx)
 	return model->supvec[sup_vec_idx + 1]->docnum;
 }
 
-SVMLIGHTLIB_API int GetKernelType(int model_id)
-{
-	MODEL *model = GetModel(model_id);
-	return model->kernel_parm.kernel_type;
-}
+//SVMLIGHTLIB_API int GetKernelType(int model_id)
+//{
+//	MODEL *model = GetModel(model_id);
+//	return model->kernel_parm.kernel_type;
+//}
 
 SVMLIGHTLIB_API int GetFeatureCount(int model_id)
 {

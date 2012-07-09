@@ -99,7 +99,7 @@ CFLOAT single_kernel(KERNEL_PARM *kernel_parm, SVECTOR *a, SVECTOR *b)
             return((CFLOAT)pow(kernel_parm->coef_lin*sprod_ss(a,b)+kernel_parm->coef_const,(double)kernel_parm->poly_degree)); 
     case RBF:    /* radial basis function */
             if(a->twonorm_sq<0) a->twonorm_sq=sprod_ss(a,a);
-            if(b->twonorm_sq<0) a->twonorm_sq=sprod_ss(b,b);
+            if(b->twonorm_sq<0) b->twonorm_sq=sprod_ss(b,b);
             return((CFLOAT)exp(-kernel_parm->rbf_gamma*(a->twonorm_sq-2*sprod_ss(a,b)+b->twonorm_sq)));
     case SIGMOID:/* sigmoid neural net */
             return((CFLOAT)tanh(kernel_parm->coef_lin*sprod_ss(a,b)+kernel_parm->coef_const)); 
