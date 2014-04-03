@@ -1,0 +1,6 @@
+bin/
+tmp/
+*.suo
+*.bak
+*.user
+*.ncb
