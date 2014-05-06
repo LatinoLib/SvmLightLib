@@ -1,5 +1,6 @@
 bin/
 tmp/
+obj/
 *.suo
 *.bak
 *.user
