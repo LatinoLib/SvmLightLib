@@ -18,7 +18,7 @@
   /* Example: The following computes the polynomial kernel. sprod_ss
               computes the inner product between two sparse vectors. 
 
-      return((CFLOAT)pow(kernel_parm->coef_lin*sprod_ss(a->words,b->words)
+      return((CFLOAT)pow(kernel_parm->coef_lin*sprod_ss(a,b)
              +kernel_parm->coef_const,(double)kernel_parm->poly_degree)); 
   */
 

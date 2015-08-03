@@ -19,10 +19,6 @@
 #ifndef SVM_COMMON
 #define SVM_COMMON
 
-# define MAXSHRINK     50000    /* maximum number of shrinking rounds */
-# define MAXFEATNUM 99999999    /* maximum feature number (must be in
-			  	   valid range of long int type!) */
-
 # include <stdio.h>
 //# include <stdint.h>
 #define int32_t __int32
@@ -33,14 +29,17 @@
 # include <time.h> 
 # include <float.h>
 
-# define VERSION       "V6.10"
-# define VERSION_DATE  "30.11.06"
+# define VERSION       "V6.20"
+# define VERSION_DATE  "14.08.08"
 
 # define CFLOAT  float       /* the type of float to use for caching */
                              /* kernel evaluations. Using float saves */
                              /* us some memory, but you can use double, too */
 # define FNUM    int32_t     /* the type used for storing feature ids */
+# define FNUM_MAX 2147483647 /* maximum value that FNUM type can take */
 # define FVAL    float       /* the type used for storing feature values */
+# define MAXFEATNUM 99999999 /* maximum feature number (must be in
+			  	valid range of FNUM type and long int!) */
 
 # define LINEAR  0           /* linear kernel type */
 # define POLY    1           /* polynomial kernel type */
@@ -53,6 +52,8 @@
 # define REGRESSION     2    /* train regression model */
 # define RANKING        3    /* train ranking model */
 # define OPTIMIZATION   4    /* train on general set of constraints */
+
+# define MAXSHRINK     50000    /* maximum number of shrinking rounds */
 
 typedef struct word {
   FNUM    wnum;	               /* word number */
@@ -264,13 +265,13 @@ typedef struct kernel_cache {
 
 
 typedef struct timing_profile {
-  long   time_kernel;
-  long   time_opti;
-  long   time_shrink;
-  long   time_update;
-  long   time_model;
-  long   time_check;
-  long   time_select;
+  double   time_kernel;
+  double   time_opti;
+  double   time_shrink;
+  double   time_update;
+  double   time_model;
+  double   time_check;
+  double   time_select;
 } TIMING;
 
 typedef struct shrink_state {
@@ -295,34 +296,58 @@ typedef struct hideo_env {
   long   roundnumber;
 } HIDEO_ENV;
 
+typedef struct randpair {
+  long   val,sort;
+} RANDPAIR;
+
 double classify_example(MODEL *, DOC *);
 double classify_example_linear(MODEL *, DOC *);
-CFLOAT kernel(KERNEL_PARM *, DOC *, DOC *); 
-CFLOAT single_kernel(KERNEL_PARM *, SVECTOR *, SVECTOR *); 
+double kernel(KERNEL_PARM *, DOC *, DOC *); 
+double single_kernel(KERNEL_PARM *, SVECTOR *, SVECTOR *); 
 double custom_kernel(KERNEL_PARM *, SVECTOR *, SVECTOR *); 
 SVECTOR *create_svector(WORD *, char *, double);
 SVECTOR *create_svector_shallow(WORD *, char *, double);
 SVECTOR *create_svector_n(double *, long, char *, double);
+SVECTOR *create_svector_n_r(double *, long, char *, double, double);
 SVECTOR *copy_svector(SVECTOR *);
 SVECTOR *copy_svector_shallow(SVECTOR *);
 void   free_svector(SVECTOR *);
 void   free_svector_shallow(SVECTOR *);
 double    sprod_ss(SVECTOR *, SVECTOR *);
 SVECTOR*  sub_ss(SVECTOR *, SVECTOR *); 
+SVECTOR*  sub_ss_r(SVECTOR *, SVECTOR *, double min_non_zero); 
 SVECTOR*  add_ss(SVECTOR *, SVECTOR *); 
+SVECTOR*  add_ss_r(SVECTOR *, SVECTOR *, double min_non_zero); 
+SVECTOR*  multadd_ss(SVECTOR *a, SVECTOR *b, double fa, double fb);
+SVECTOR*  multadd_ss_r(SVECTOR *a,SVECTOR *b,double fa, double fb,
+		       double min_non_zero);
 SVECTOR*  add_list_ns(SVECTOR *a);
+SVECTOR*  add_dual_list_ns_r(SVECTOR *, SVECTOR *, double min_non_zero); 
+SVECTOR*  add_list_ns_r(SVECTOR *a, double min_non_zero);
 SVECTOR*  add_list_ss(SVECTOR *); 
+SVECTOR*  add_dual_list_ss_r(SVECTOR *, SVECTOR *, double min_non_zero); 
+SVECTOR*  add_list_ss_r(SVECTOR *, double  min_non_zero); 
+SVECTOR*  add_list_sort_ss(SVECTOR *); 
+SVECTOR*  add_dual_list_sort_ss_r(SVECTOR *, SVECTOR *, double min_non_zero); 
+SVECTOR*  add_list_sort_ss_r(SVECTOR *, double min_non_zero); 
 void      add_list_n_ns(double *vec_n, SVECTOR *vec_s, double faktor);
 void      append_svector_list(SVECTOR *a, SVECTOR *b);
+void      mult_svector_list(SVECTOR *a, double factor);
+void      setfactor_svector_list(SVECTOR *a, double factor);
 SVECTOR*  smult_s(SVECTOR *, double);
+SVECTOR*  shift_s(SVECTOR *a, long shift);
 int       featvec_eq(SVECTOR *, SVECTOR *); 
-double model_length_s(MODEL *, KERNEL_PARM *);
+double model_length_s(MODEL *);
+double model_length_n(MODEL *);
 void   mult_vector_ns(double *, SVECTOR *, double);
 void   add_vector_ns(double *, SVECTOR *, double);
 double sprod_ns(double *, SVECTOR *);
 void   add_weight_vector_to_linear_model(MODEL *);
 DOC    *create_example(long, long, long, double, SVECTOR *);
 void   free_example(DOC *, long);
+long   *random_order(long n);
+void   print_percent_progress(long *progress, long maximum, 
+			      long percentperdot, char *symbol);
 MATRIX *create_matrix(int n, int m);
 MATRIX *realloc_matrix(MATRIX *matrix, int n, int m);
 double *create_nvector(int n);
@@ -342,6 +367,7 @@ MATRIX *prod_matrix_matrix(MATRIX *A, MATRIX *B);
 void   print_matrix(MATRIX *matrix);
 MODEL  *read_model(char *);
 MODEL  *copy_model(MODEL *);
+MODEL  *compact_linear_model(MODEL *model);
 void   free_model(MODEL *, int);
 void   read_documents(char *, DOC ***, double **, long *, long *);
 int    parse_document(char *, WORD *, double *, long *, long *, double *, long *, long, char **);

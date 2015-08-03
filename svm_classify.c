@@ -114,7 +114,9 @@ int _svm_classify (int argc, char* argv[])
 	printf("%ld..",totdoc); fflush(stdout);
       }
     }
-  }  
+  }
+  fclose(predfl);
+  fclose(docfl);
   free(line);
   free(words);
   free_model(model,1);
