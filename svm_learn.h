@@ -146,8 +146,8 @@ double most_similar_sv_of_same_class(MODEL *, DOC **, double *, long, long *, KE
 double distribute_alpha_t_greedily(long *, long, DOC **, double *, long, long *, KERNEL_PARM *, LEARN_PARM *, double);
 double distribute_alpha_t_greedily_noindex(MODEL *, DOC **, double *, long, long *, KERNEL_PARM *, LEARN_PARM *, double); 
 void estimate_transduction_quality(MODEL *, long *, long *, long, DOC **, double *);
-double estimate_margin_vcdim(MODEL *, double, double, KERNEL_PARM *);
-double estimate_sphere(MODEL *, KERNEL_PARM *);
+double estimate_margin_vcdim(MODEL *, double, double);
+double estimate_sphere(MODEL *);
 double estimate_r_delta_average(DOC **, long, KERNEL_PARM *); 
 double estimate_r_delta(DOC **, long, KERNEL_PARM *); 
 double length_of_longest_document_vector(DOC **, long, KERNEL_PARM *); 

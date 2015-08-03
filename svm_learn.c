@@ -61,12 +61,13 @@ void svm_learn_classification(DOC **docs, double *class, long int
   double loss,model_length,example_length;
   double dualitygap,xisum,alphasum,xi;
   double maxdiff,*lin,*a,*c;
-  long runtime_start,runtime_end;
+  double runtime_start,runtime_end;
   long iterations;
   long *unlabeled,transduction;
   long heldout;
   long loo_count=0,loo_count_pos=0,loo_count_neg=0,trainpos=0,trainneg=0;
-  long loocomputed=0,runtime_start_loo=0,runtime_start_xa=0;
+  long loocomputed=0;
+  double runtime_start_loo=0,runtime_start_xa=0;
   double heldout_c=0,r_delta_sq=0,r_delta,r_delta_avg;
   long *index,*index2dnum;
   double *weights;
@@ -272,14 +273,14 @@ void svm_learn_classification(DOC **docs, double *class, long int
     runtime_end=get_runtime();
     if(verbosity>=2) {
       printf("Runtime in cpu-seconds: %.2f (%.2f%% for kernel/%.2f%% for optimizer/%.2f%% for final/%.2f%% for update/%.2f%% for model/%.2f%% for check/%.2f%% for select)\n",
-        ((float)runtime_end-(float)runtime_start)/100.0,
-        (100.0*timing_profile.time_kernel)/(float)(runtime_end-runtime_start),
-	(100.0*timing_profile.time_opti)/(float)(runtime_end-runtime_start),
-	(100.0*timing_profile.time_shrink)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_update)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_model)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_check)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_select)/(float)(runtime_end-runtime_start));
+        (runtime_end-runtime_start)/100.0,
+        (100.0*timing_profile.time_kernel)/(runtime_end-runtime_start),
+	(100.0*timing_profile.time_opti)/(runtime_end-runtime_start),
+	(100.0*timing_profile.time_shrink)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_update)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_model)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_check)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_select)/(runtime_end-runtime_start));
     }
     else {
       printf("Runtime in cpu-seconds: %.2f\n",
@@ -327,12 +328,11 @@ void svm_learn_classification(DOC **docs, double *class, long int
 	      alphasum-0.5*model_length*model_length);
       fprintf(stdout,"L1 loss: loss=%.5f\n",loss);
       fprintf(stdout,"Norm of weight vector: |w|=%.5f\n",model_length);
-      example_length=estimate_sphere(model,kernel_parm); 
+      example_length=estimate_sphere(model); 
       fprintf(stdout,"Norm of longest example vector: |x|=%.5f\n",
 	      length_of_longest_document_vector(docs,totdoc,kernel_parm));
       fprintf(stdout,"Estimated VCdim of classifier: VCdim<=%.5f\n",
-	      estimate_margin_vcdim(model,model_length,example_length,
-				    kernel_parm));
+	      estimate_margin_vcdim(model,model_length,example_length));
       if((!learn_parm->remove_inconsistent) && (!transduction)) {
 	runtime_start_xa=get_runtime();
 	if(verbosity>=1) {
@@ -461,7 +461,7 @@ void svm_learn_classification(DOC **docs, double *class, long int
       fprintf(stdout,"Actual leave-one-outs computed:  %ld (rho=%.2f)\n",
 	      loocomputed,learn_parm->rho);
       printf("Runtime for leave-one-out in cpu-seconds: %.2f\n",
-	     (double)(get_runtime()-runtime_start_loo)/100.0);
+	     (get_runtime()-runtime_start_loo)/100.0);
     }
   }
     
@@ -504,7 +504,7 @@ void svm_learn_regression(DOC **docs, double *value, long int totdoc,
   long upsupvecnum;
   double loss,model_length,example_length;
   double maxdiff,*lin,*a,*c;
-  long runtime_start,runtime_end;
+  double runtime_start,runtime_end;
   long iterations,kernel_cache_size;
   long *unlabeled;
   double r_delta_sq=0,r_delta,r_delta_avg;
@@ -635,14 +635,14 @@ void svm_learn_regression(DOC **docs, double *value, long int totdoc,
     runtime_end=get_runtime();
     if(verbosity>=2) {
       printf("Runtime in cpu-seconds: %.2f (%.2f%% for kernel/%.2f%% for optimizer/%.2f%% for final/%.2f%% for update/%.2f%% for model/%.2f%% for check/%.2f%% for select)\n",
-        ((float)runtime_end-(float)runtime_start)/100.0,
-        (100.0*timing_profile.time_kernel)/(float)(runtime_end-runtime_start),
-	(100.0*timing_profile.time_opti)/(float)(runtime_end-runtime_start),
-	(100.0*timing_profile.time_shrink)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_update)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_model)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_check)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_select)/(float)(runtime_end-runtime_start));
+        (runtime_end-runtime_start)/100.0,
+        (100.0*timing_profile.time_kernel)/(runtime_end-runtime_start),
+	(100.0*timing_profile.time_opti)/(runtime_end-runtime_start),
+	(100.0*timing_profile.time_shrink)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_update)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_model)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_check)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_select)/(runtime_end-runtime_start));
     }
     else {
       printf("Runtime in cpu-seconds: %.2f\n",
@@ -680,7 +680,7 @@ void svm_learn_regression(DOC **docs, double *value, long int totdoc,
       model_length=sqrt(model_length);
       fprintf(stdout,"L1 loss: loss=%.5f\n",loss);
       fprintf(stdout,"Norm of weight vector: |w|=%.5f\n",model_length);
-      example_length=estimate_sphere(model,kernel_parm); 
+      example_length=estimate_sphere(model); 
       fprintf(stdout,"Norm of longest example vector: |x|=%.5f\n",
 	      length_of_longest_document_vector(docs,totdoc,kernel_parm));
     }
@@ -759,7 +759,7 @@ void svm_learn_ranking(DOC **docs, double *rankvalue, long int totdoc,
   for(i=0;i<totdoc;i++) {
     for(j=i+1;j<totdoc;j++) {
       if(docs[i]->queryid == docs[j]->queryid) {
-	/* "Highjacked" costfactor to input rhs of constraints */
+	/* "Hijacked" costfactor to input rhs of constraints */
 	/* cost=(docs[i]->costfactor+docs[j]->costfactor)/2.0; */
 	cost=1;
 	if(rankvalue[i] > rankvalue[j]) {
@@ -904,7 +904,7 @@ void svm_learn_optimization(DOC **docs, double *rhs, long int
   long misclassified,upsupvecnum;
   double loss,model_length,alphasum,example_length;
   double maxdiff,*lin,*a,*c;
-  long runtime_start,runtime_end;
+  double runtime_start,runtime_end;
   long iterations,maxslackid,svsetnum;
   long *unlabeled,*inconsistent;
   double r_delta_avg;
@@ -1100,14 +1100,14 @@ void svm_learn_optimization(DOC **docs, double *rhs, long int
     runtime_end=get_runtime();
     if(verbosity>=2) {
       printf("Runtime in cpu-seconds: %.2f (%.2f%% for kernel/%.2f%% for optimizer/%.2f%% for final/%.2f%% for update/%.2f%% for model/%.2f%% for check/%.2f%% for select)\n",
-        ((float)runtime_end-(float)runtime_start)/100.0,
-        (100.0*timing_profile.time_kernel)/(float)(runtime_end-runtime_start),
-	(100.0*timing_profile.time_opti)/(float)(runtime_end-runtime_start),
-	(100.0*timing_profile.time_shrink)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_update)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_model)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_check)/(float)(runtime_end-runtime_start),
-        (100.0*timing_profile.time_select)/(float)(runtime_end-runtime_start));
+        (runtime_end-runtime_start)/100.0,
+        (100.0*timing_profile.time_kernel)/(runtime_end-runtime_start),
+	(100.0*timing_profile.time_opti)/(runtime_end-runtime_start),
+	(100.0*timing_profile.time_shrink)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_update)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_model)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_check)/(runtime_end-runtime_start),
+        (100.0*timing_profile.time_select)/(runtime_end-runtime_start));
     }
     else {
       printf("Runtime in cpu-seconds: %.2f\n",
@@ -1187,7 +1187,7 @@ void svm_learn_optimization(DOC **docs, double *rhs, long int
 	     model->sv_num-1,upsupvecnum);
       fprintf(stdout,"L1 loss: loss=%.5f\n",loss);
     }
-    example_length=estimate_sphere(model,kernel_parm); 
+    example_length=estimate_sphere(model); 
     fprintf(stdout,"Norm of longest example vector: |x|=%.5f\n",
 	    length_of_longest_document_vector(docs,totdoc,kernel_parm));
   }
@@ -1251,7 +1251,7 @@ long optimize_to_convergence(DOC **docs, long int *label, long int totdoc,
   long activenum;
   double criterion,eq;
   double *a_old;
-  long t0=0,t1=0,t2=0,t3=0,t4=0,t5=0,t6=0; /* timing */
+  double t0=0,t1=0,t2=0,t3=0,t4=0,t5=0,t6=0; /* timing */
   long transductcycle;
   long transduction;
   double epsilon_crit_org; 
@@ -1693,7 +1693,7 @@ long optimize_to_convergence_sharedslack(DOC **docs, long int *label,
   long activenum,retrain,maxslackid,slackset,jointstep;
   double criterion,eq_target;
   double *a_old,*alphaslack;
-  long t0=0,t1=0,t2=0,t3=0,t4=0,t5=0,t6=0; /* timing */
+  double t0=0,t1=0,t2=0,t3=0,t4=0,t5=0,t6=0; /* timing */
   double epsilon_crit_org,maxsharedviol; 
   double bestmaxdiff;
   long   bestmaxdiffiter,terminate;
@@ -4049,8 +4049,7 @@ void estimate_transduction_quality(MODEL *model, long int *label,
   printf("r_delta_sq=%.5f xisum=%.5f asum=%.5f\n",r_delta_sq,xisum,asum);
 }
 
-double estimate_margin_vcdim(MODEL *model, double w, double R, 
-			     KERNEL_PARM *kernel_parm) 
+double estimate_margin_vcdim(MODEL *model, double w, double R) 
      /* optional: length of model vector in feature space */
      /* optional: radius of ball containing the data */
 {
@@ -4059,16 +4058,16 @@ double estimate_margin_vcdim(MODEL *model, double w, double R,
   /* follows chapter 5.6.4 in [Vapnik/95] */
 
   if(w<0) {
-    w=model_length_s(model,kernel_parm);
+    w=model_length_s(model);
   }
   if(R<0) {
-    R=estimate_sphere(model,kernel_parm); 
+    R=estimate_sphere(model); 
   }
   h = w*w * R*R +1; 
   return(h);
 }
 
-double estimate_sphere(MODEL *model, KERNEL_PARM *kernel_parm) 
+double estimate_sphere(MODEL *model) 
                           /* Approximates the radius of the ball containing */
                           /* the support vectors by bounding it with the */
 {                         /* length of the longest support vector. This is */
@@ -4076,6 +4075,7 @@ double estimate_sphere(MODEL *model, KERNEL_PARM *kernel_parm)
   double xlen,maxxlen=0;  /* documents have feature vectors of length 1. It */
   DOC *nulldoc;           /* assumes that the center of the ball is at the */
   WORD nullword;          /* origin of the space. */
+  KERNEL_PARM *kernel_parm=&(model->kernel_parm);
 
   nullword.wnum=0;
   nulldoc=create_example(-2,0,0,0.0,create_svector(&nullword,"",1.0)); 
