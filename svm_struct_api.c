@@ -63,6 +63,11 @@ SAMPLE      read_struct_examples(char *file, STRUCT_LEARN_PARM *sparm)
   for(i=0;i<n;i++)     /* find highest class label */
     if(num_classes < (target[i]+0.1)) 
       num_classes=target[i]+0.1;
+  for(i=0;i<n;i++)     /* make sure all class labels are positive */
+    if(target[i]<1) {
+      printf("\nERROR: The class label '%lf' of example number %ld is not greater than '1'!\n",target[i],i+1);
+      exit(1);
+    } 
   for(i=0;i<n;i++) {          /* copy docs over into new datastructure */
     examples[i].x.doc=docs[i];
     examples[i].y._class=target[i]+0.1;
@@ -140,7 +145,7 @@ CONSTSET    init_struct_constraints(SAMPLE sample, STRUCTMODEL *sm,
       words[1].wnum=0;
       /* the following slackid is a hack. we will run into problems,
          if we have move than 1000000 slack sets (ie examples) */
-      c.lhs[i]=create_example(i,0,1000000+i,1,create_svector(words,"",1.0));
+      c.lhs[i]=create_example(i,0,1000000+i,1,create_svector(words,NULL,1.0));
       c.rhs[i]=0.0;
     }
   }
@@ -307,12 +312,14 @@ SVECTOR     *psi(PATTERN x, LABEL y, STRUCTMODEL *sm,
      ybar!=y that maximizes psi(x,ybar,sm)*sm.w (where * is the inner
      vector product) and the appropriate function of the loss.  */
   SVECTOR *fvec;
-  long i;
 
-  fvec=create_svector(x.doc->fvec->words,x.doc->fvec->userdefined,1.0);
-  for(i=0;fvec->words[i].wnum;i++) { /* move to weight vector of class y */
-    fvec->words[i].wnum+=(y._class-1)*sparm->num_features;
-  }
+  /* shift the feature numbers to the position of weight vector of class y */
+  fvec=shift_s(x.doc->fvec,(y._class-1)*sparm->num_features);
+
+  /* The following makes sure that the weight vectors for each class
+     are treated separately when kernels are used . */
+  fvec->kernel_id=y._class;
+  
   return(fvec);
 }
 
@@ -321,7 +328,7 @@ double      loss(LABEL y, LABEL ybar, STRUCT_LEARN_PARM *sparm)
   /* loss for correct label y and predicted label ybar. The loss for
      y==ybar has to be zero. sparm->loss_function is set with the -l option. */
   if(sparm->loss_function == 0) { /* type 0 loss: 0/1 loss */
-    if(y._class == ybar._class)     /* return 0, if y==ybar. return 1 else */
+    if(y._class == ybar._class)     /* return 0, if y==ybar. return 100 else */
       return(0);
     else
       return(100);
@@ -354,6 +361,20 @@ void        print_struct_learning_stats(SAMPLE sample, STRUCTMODEL *sm,
   /* This function is called after training and allows final touches to
      the model sm. But primarly it allows computing and printing any
      kind of statistic (e.g. training error) you might want. */
+  
+  /* Replace SV with single weight vector */
+  MODEL *model=sm->svm_model;
+  if(model->kernel_parm.kernel_type == LINEAR) {
+    if(struct_verbosity>=1) {
+      printf("Compacting linear model..."); fflush(stdout);
+    }
+    sm->svm_model=compact_linear_model(model);
+    sm->w=sm->svm_model->lin_weights; /* short cut to weight vector */
+    free_model(model,1);
+    if(struct_verbosity>=1) {
+      printf("done\n"); fflush(stdout);
+    }
+  }  
 }
 
 void        write_struct_model(char *file, STRUCTMODEL *sm, 
@@ -399,12 +420,16 @@ void        write_struct_model(char *file, STRUCTMODEL *sm,
   for(i=1;i<model->sv_num;i++) {
     for(v=model->supvec[i]->fvec;v;v=v->next) {
       fprintf(modelfl,"%.32g ",model->alpha[i]*v->factor);
+	  fprintf(modelfl,"qid:%ld ",v->kernel_id);
       for (j=0; (v->words[j]).wnum; j++) {
 	fprintf(modelfl,"%ld:%.8g ",
 		(long)(v->words[j]).wnum,
 		(double)(v->words[j]).weight);
       }
-      fprintf(modelfl,"#%s\n",v->userdefined);
+      if(v->userdefined)
+	fprintf(modelfl,"#%s\n",v->userdefined);
+      else
+	fprintf(modelfl,"#\n");
     /* NOTE: this could be made more efficient by summing the
        alpha's of identical vectors before writing them to the
        file. */
@@ -499,6 +524,7 @@ STRUCTMODEL read_struct_model(char *file, STRUCT_LEARN_PARM *sparm)
     }
     model->supvec[i] = create_example(-1,0,0,0.0,
 				      create_svector(words,comment,1.0));
+	model->supvec[i]->fvec->kernel_id=queryid;
   }
   fclose(modelfl);
   free(line);
@@ -582,21 +608,20 @@ void        print_struct_help_classify()
 {
   /* Prints a help text that is appended to the common help text of
      svm_struct_classify. */
-  printf("         --* string -> custom parameters that can be adapted for struct\n");
-  printf("                       learning. The * can be replaced by any character\n");
-  printf("                       and there can be multiple options starting with --.\n");
 }
 
-void         parse_struct_parameters_classify(char *attribute, char *value)
+void        parse_struct_parameters_classify(STRUCT_LEARN_PARM *sparm)
 {
-  /* Parses one command line parameters that start with -- . The name
-     of the parameter is given in attribute, the value is given in
-     value. */
+  /* Parses the command line parameters that start with -- for the
+     classification module */
+  int i;
 
-  switch (attribute[2]) 
-    { 
-      /* case 'x': strcpy(xvalue,value); break; */
-      default: printf("\nUnrecognized option %s!\n\n",attribute);
+  for(i=0;(i<sparm->custom_argc) && ((sparm->custom_argv[i])[0] == '-');i++) {
+    switch ((sparm->custom_argv[i])[2]) 
+      { 
+      /* case 'x': i++; strcpy(xvalue,sparm->custom_argv[i]); break; */
+      default: printf("\nUnrecognized option %s!\n\n",sparm->custom_argv[i]);
 	       exit(0);
-    }
+      }
+  }
 }

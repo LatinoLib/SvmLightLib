@@ -19,8 +19,8 @@
 #ifndef svm_struct_common
 #define svm_struct_common
 
-# define STRUCT_VERSION       "V3.00"
-# define STRUCT_VERSION_DATE  "30.10.06"
+# define STRUCT_VERSION       "V3.10"
+# define STRUCT_VERSION_DATE  "14.08.08"
 
 #ifdef __cplusplus
 extern "C" {

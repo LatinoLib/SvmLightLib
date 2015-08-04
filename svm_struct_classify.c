@@ -25,8 +25,10 @@ extern "C" {
 }
 #endif
 #include "svm_struct_api.h"
+#include "svm_struct_common.h"
 
-void svm_struct_classify_read_input_parameters(int, char **, char *, char *, char *, long *);
+void svm_struct_classify_read_input_parameters(int, char **, char *, char *, char *, 
+			   STRUCT_LEARN_PARM *, long*, long *);
 void svm_struct_classify_print_help(void);
 
 
@@ -48,14 +50,14 @@ int _svm_struct_classify (int argc, char* argv[])
 
   svm_struct_classify_api_init(argc,argv);
 
-  svm_struct_classify_read_input_parameters(argc,argv,testfile,modelfile,predictionsfile,
-			&verbosity);
+  svm_struct_classify_read_input_parameters(argc,argv,testfile,modelfile,predictionsfile,&sparm,
+			&verbosity,&struct_verbosity);
 
-  if(verbosity>=1) {
+  if(struct_verbosity>=1) {
     printf("Reading model..."); fflush(stdout);
   }
   model=read_struct_model(modelfile,&sparm);
-  if(verbosity>=1) {
+  if(struct_verbosity>=1) {
     fprintf(stdout, "done.\n");
   }
 
@@ -65,16 +67,16 @@ int _svm_struct_classify (int argc, char* argv[])
     model.w=model.svm_model->lin_weights;
   }
   
-  if(verbosity>=2) {
-    printf("Reading test examples.."); fflush(stdout);
+  if(struct_verbosity>=1) {
+    printf("Reading test examples..."); fflush(stdout);
   }
   testsample=read_struct_examples(testfile,&sparm);
-  if(verbosity>=2) {
+  if(struct_verbosity>=1) {
     printf("done.\n"); fflush(stdout);
   }
 
-  if(verbosity>=2) {
-    printf("Classifying test examples.."); fflush(stdout);
+  if(struct_verbosity>=1) {
+    printf("Classifying test examples..."); fflush(stdout);
   }
 
   if ((predfl = fopen (predictionsfile, "w")) == NULL)
@@ -96,7 +98,7 @@ int _svm_struct_classify (int argc, char* argv[])
 
     if(empty_label(testsample.examples[i].y)) 
       { no_accuracy=1; } /* test data is not labeled */
-    if(verbosity>=2) {
+    if(struct_verbosity>=2) {
       if((i+1) % 100 == 0) {
 	printf("%ld..",i+1); fflush(stdout);
       }
@@ -106,12 +108,12 @@ int _svm_struct_classify (int argc, char* argv[])
   avgloss/=testsample.n;
   fclose(predfl);
 
-  if(verbosity>=2) {
+  if(struct_verbosity>=1) {
     printf("done\n");
     printf("Runtime (without IO) in cpu-seconds: %.2f\n",
 	   (float)(runtime/100.0));    
   }
-  if((!no_accuracy) && (verbosity>=1)) {
+  if((!no_accuracy) && (struct_verbosity>=1)) {
     printf("Average loss on test set: %.4f\n",(float)avgloss);
     printf("Zero/one-error on test set: %.2f%% (%ld correct, %ld incorrect, %d total)\n",(float)100.0*incorrect/testsample.n,correct,incorrect,testsample.n);
   }
@@ -124,23 +126,28 @@ int _svm_struct_classify (int argc, char* argv[])
   return(0);
 }
 
-void svm_struct_classify_read_input_parameters(int argc, char **argv, char *testfile, 
-			   char *modelfile, char *predictionsfile, 
-			   long int *verbosity)
+void svm_struct_classify_read_input_parameters(int argc,char *argv[],char *testfile,
+			   char *modelfile,char *predictionsfile,
+			   STRUCT_LEARN_PARM *struct_parm,
+			   long *verbosity,long *struct_verbosity)
 {
   long i;
   
   /* set default */
   strcpy (modelfile, "svm_model");
   strcpy (predictionsfile, "svm_predictions"); 
-  (*verbosity)=2;
+  (*verbosity)=0;/*verbosity for svm_light*/
+  (*struct_verbosity)=1; /*verbosity for struct learning portion*/
+  struct_parm->custom_argc=0;
 
   for(i=1;(i<argc) && ((argv[i])[0] == '-');i++) {
     switch ((argv[i])[1]) 
       { 
       case 'h': svm_struct_classify_print_help(); exit(0);
-      case 'v': i++; (*verbosity)=atol(argv[i]); break;
-      case '-': parse_struct_parameters_classify(argv[i],argv[i+1]);i++; break;
+      case '?': svm_struct_classify_print_help(); exit(0);
+      case '-': strcpy(struct_parm->custom_argv[struct_parm->custom_argc++],argv[i]);i++; strcpy(struct_parm->custom_argv[struct_parm->custom_argc++],argv[i]);break; 
+      case 'v': i++; (*struct_verbosity)=atol(argv[i]); break;
+      case 'y': i++; (*verbosity)=atol(argv[i]); break;
       default: printf("\nUnrecognized option %s!\n\n",argv[i]);
 	       svm_struct_classify_print_help();
 	       exit(0);
@@ -156,6 +163,8 @@ void svm_struct_classify_read_input_parameters(int argc, char **argv, char *test
   if((i+2)<argc) {
     strcpy (predictionsfile, argv[i+2]);
   }
+
+  parse_struct_parameters_classify(struct_parm);
 }
 
 void svm_struct_classify_print_help(void)

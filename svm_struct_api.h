@@ -69,6 +69,10 @@ void        free_struct_sample(SAMPLE s);
 void        print_struct_help();
 void        parse_struct_parameters(STRUCT_LEARN_PARM *sparm);
 void        print_struct_help_classify();
-void        parse_struct_parameters_classify(char *attribute, char *value);
+void        parse_struct_parameters_classify(STRUCT_LEARN_PARM *sparm);
+void        svm_learn_struct_joint_custom(SAMPLE sample, 
+				   STRUCT_LEARN_PARM *sparm,
+				   LEARN_PARM *lparm, KERNEL_PARM *kparm, 
+				   STRUCTMODEL *sm);
 
 #endif

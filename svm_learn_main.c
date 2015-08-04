@@ -18,11 +18,17 @@
 /***********************************************************************/
 
 
-/* uncomment, if you want to use svm-learn out of C++ */
-/* extern "C" { */
+/* if svm-learn is used out of C++, define it as extern "C" */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 # include "svm_common.h"
 # include "svm_learn.h"
-/* } */
+
+#ifdef __cplusplus
+}
+#endif
 
 void   _read_input_parameters(int, char **, char *, char *, char *, long *, 
 			     LEARN_PARM *, KERNEL_PARM *);
@@ -428,8 +434,8 @@ void print_help()
   printf("Optimization options (see [1]):\n");
   printf("         -q [2..]    -> maximum size of QP-subproblems (default 10)\n");
   printf("         -n [2..q]   -> number of new variables entering the working set\n");
-  printf("                        in each iteration (default n = q). Set n<q to prevent\n");
-  printf("                        zig-zagging.\n");
+  printf("                        in each iteration (default n = q). Set n < q to \n");
+  printf("                        prevent zig-zagging.\n");
   printf("         -m [5..]    -> size of cache for kernel evaluations in MB (default 40)\n");
   printf("                        The larger the faster...\n");
   printf("         -e float    -> eps: Allow that error for termination criterion\n");
