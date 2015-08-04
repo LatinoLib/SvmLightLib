@@ -117,8 +117,6 @@ int svm_struct_learn (int argc, char* argv[], SAMPLE *sample, STRUCTMODEL *model
   LEARN_PARM learn_parm;
   KERNEL_PARM kernel_parm;
   int alg_type;
-  //SAMPLE _sample;
-  //int i, j;
 
   HIDEO_ENV *hideo_env=create_env();
 
@@ -128,30 +126,6 @@ int svm_struct_learn (int argc, char* argv[], SAMPLE *sample, STRUCTMODEL *model
 			&struct_verbosity,struct_parm,&learn_parm,
 			&kernel_parm,&alg_type);
 
-//  _sample=read_struct_examples("C:\\NewWork\\SvmLightLib\\SvmLightLibDemo\\Examples\\Multiclass\\train.dat",struct_parm);
-//  // compare _sample to *sample
-//  assert(_sample.n == sample->n);
-//  for (i = 0; i < _sample.n; i++)
-//  {
-//	  SVECTOR *vec_1 = _sample.examples[i].x.doc->fvec;
-//	  SVECTOR *vec_2 = sample->examples[i].x.doc->fvec;
-//	  assert(vec_1->factor == vec_2->factor);
-//	  assert(vec_1->kernel_id == vec_2->kernel_id);
-//	  assert(vec_1->next == vec_2->next);
-//	  assert(vec_1->twonorm_sq == vec_2->twonorm_sq);
-//	  assert(strcmp(vec_1->userdefined, vec_2->userdefined) == 0);
-//	  j = 0;
-//	  while (vec_1->words[j].wnum > 0 || vec_2->words[j].wnum > 0)
-//	  {
-//		  //printf("%d %d\n", vec_1->words[j].wnum, vec_2->words[j].wnum);
-//		  //printf("%f %f\n", vec_1->words[j].weight, vec_2->words[j].weight);
-//		  assert(vec_1->words[j].wnum == vec_2->words[j].wnum);
-//		  assert(vec_1->words[j].weight == vec_2->words[j].weight);
-//		  j++;
-//	  }
-//  }
-//  //sample=&_sample;
-  
   /* Do the learning and return structmodel. */
   if(alg_type == 0)
     svm_learn_struct(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,NSLACK_ALG,hideo_env);
@@ -413,6 +387,7 @@ void svm_struct_read_input_parameters(int argc,char *argv[],char *trainfile,
   struct_parm->loss_type=DEFAULT_RESCALING;
   struct_parm->newconstretrain=100;
   struct_parm->ccache_size=5;
+  struct_parm->batch_size=100;
 
   strcpy (modelfile, "svm_struct_model");
   strcpy (learn_parm->predfile, "trans_predictions");
@@ -464,6 +439,7 @@ void svm_struct_read_input_parameters(int argc,char *argv[],char *trainfile,
       case 'q': i++; learn_parm->svm_maxqpsize=atol(argv[i]); break;
       case 'l': i++; struct_parm->loss_function=atol(argv[i]); break;
       case 'f': i++; struct_parm->ccache_size=atol(argv[i]); break;
+      case 'b': i++; struct_parm->batch_size=atof(argv[i]); break;
       case 't': i++; kernel_parm->kernel_type=atol(argv[i]); break;
       case 'd': i++; kernel_parm->poly_degree=atol(argv[i]); break;
       case 'g': i++; kernel_parm->rbf_gamma=atof(argv[i]); break;
@@ -529,8 +505,8 @@ void svm_struct_read_input_parameters(int argc,char *argv[],char *trainfile,
     svm_struct_main_print_help();
     exit(0);
   }
-  if(((*alg_type) < 1) || ((*alg_type) > 4)) {
-    printf("\nAlgorithm type must be either '1', '2', '3', or '4'!\n\n");
+  if(((*alg_type) < 0) || (((*alg_type) > 5) && ((*alg_type) != 9))) {
+    printf("\nAlgorithm type must be either '0', '1', '2', '3', '4', or '9'!\n\n");
     svm_struct_main_wait_any_key();
     svm_struct_main_print_help();
     exit(0);
@@ -550,6 +526,19 @@ void svm_struct_read_input_parameters(int argc,char *argv[],char *trainfile,
   }
   if(struct_parm->epsilon<=0) {
     printf("\nThe epsilon parameter must be greater than zero!\n\n");
+    svm_struct_main_wait_any_key();
+    svm_struct_main_print_help();
+    exit(0);
+  }
+  if((struct_parm->ccache_size<=0) && ((*alg_type) == 4)) {
+    printf("\nThe cache size must be at least 1!\n\n");
+    svm_struct_main_wait_any_key();
+    svm_struct_main_print_help();
+    exit(0);
+  }
+  if(((struct_parm->batch_size<=0) || (struct_parm->batch_size>100))  
+     && ((*alg_type) == 4)) {
+    printf("\nThe batch size must be in the interval ]0,100]!\n\n");
     svm_struct_main_wait_any_key();
     svm_struct_main_print_help();
     exit(0);
