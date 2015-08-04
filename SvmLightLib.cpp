@@ -844,6 +844,7 @@ SVMLIGHTLIB_API void SaveMulticlassModelBin(int model_id, char *file_name) // mo
 		{
 			double alpha_times_factor = svm_model->alpha[i] * vec->factor;
 			model_file.write((const char *)&alpha_times_factor, sizeof(double));
+			model_file.write((const char *)&vec->kernel_id, sizeof(long));
 			int num_feat = 0;
 			for (int j = 0; vec->words[j].wnum; j++) { num_feat++; }
 			model_file.write((const char *)&num_feat, sizeof(int));
@@ -852,9 +853,17 @@ SVMLIGHTLIB_API void SaveMulticlassModelBin(int model_id, char *file_name) // mo
 				model_file.write((const char *)&vec->words[j].wnum, sizeof(FNUM));
 				model_file.write((const char *)&vec->words[j].weight, sizeof(FVAL)); 
 			}
-			int len = (int)strlen(vec->userdefined);
-			model_file.write((const char *)&len, sizeof(int));
-			model_file.write(vec->userdefined, len);
+			if (vec->userdefined)
+			{
+				int len = (int)strlen(vec->userdefined);
+				model_file.write((const char *)&len, sizeof(int));
+				model_file.write(vec->userdefined, len);
+			}
+			else
+			{
+				int len = 0;
+				model_file.write((const char *)&len, sizeof(int));
+			}
 		}
 	}
 	model_file.close();
@@ -905,8 +914,10 @@ SVMLIGHTLIB_API int LoadMulticlassModelBin(char *file_name) // modified read_str
 	svm_model->lin_weights = NULL;	
 	for (int i = 1; i < svm_model->sv_num; i++)
 	{
-		int num_feat;
 		model_file.read((char *)&svm_model->alpha[i], sizeof(double));
+		long kernel_id;
+		model_file.read((char *)&kernel_id, sizeof(long));
+		int num_feat;
 		model_file.read((char *)&num_feat, sizeof(int));
 		SvmLight::WORD *words = (SvmLight::WORD *)my_malloc(sizeof(SvmLight::WORD) * (num_feat + 1));
 		for (int j = 0; j < num_feat; j++)
@@ -921,6 +932,7 @@ SVMLIGHTLIB_API int LoadMulticlassModelBin(char *file_name) // modified read_str
 		model_file.read(comment, comment_len);
 		comment[comment_len] = 0;
 		svm_model->supvec[i] = create_example(-1, 0, 0, 0.0, create_svector(words, comment, 1.0));
+		svm_model->supvec[i]->fvec->kernel_id = kernel_id;
 		delete[] comment;
 	}
 	model_file.close();
@@ -977,6 +989,7 @@ SVMLIGHTLIB_API void SaveMulticlassModelBinCallback(int model_id, WriteByteCallb
 		{
 			double alpha_times_factor = svm_model->alpha[i] * vec->factor;
 			WriteBytes((char *)&alpha_times_factor, sizeof(double), callback);
+			WriteBytes((char *)&vec->kernel_id, sizeof(long), callback);
 			int num_feat = 0;
 			for (int j = 0; vec->words[j].wnum; j++) { num_feat++; }
 			WriteBytes((char *)&num_feat, sizeof(int), callback);
@@ -985,9 +998,17 @@ SVMLIGHTLIB_API void SaveMulticlassModelBinCallback(int model_id, WriteByteCallb
 				WriteBytes((char *)&vec->words[j].wnum, sizeof(FNUM), callback);
 				WriteBytes((char *)&vec->words[j].weight, sizeof(FVAL), callback); 
 			}
-			int len = (int)strlen(vec->userdefined);
-			WriteBytes((char *)&len, sizeof(int), callback);
-			WriteBytes(vec->userdefined, len, callback);
+			if (vec->userdefined)
+			{
+				int len = (int)strlen(vec->userdefined);
+				WriteBytes((char *)&len, sizeof(int), callback);
+				WriteBytes(vec->userdefined, len, callback);
+			}
+			else 
+			{
+				int len = 0;
+				WriteBytes((char *)&len, sizeof(int), callback);
+			}
 		}
 	}
 }
@@ -1030,8 +1051,10 @@ SVMLIGHTLIB_API int LoadMulticlassModelBinCallback(ReadByteCallback callback) //
 	svm_model->lin_weights = NULL;	
 	for (int i = 1; i < svm_model->sv_num; i++)
 	{
-		int num_feat;
 		ReadBytes((char *)&svm_model->alpha[i], sizeof(double), callback);
+		long kernel_id;
+		ReadBytes((char *)&kernel_id, sizeof(long), callback);
+		int num_feat;
 		ReadBytes((char *)&num_feat, sizeof(int), callback);
 		SvmLight::WORD *words = (SvmLight::WORD *)my_malloc(sizeof(SvmLight::WORD) * (num_feat + 1));
 		for (int j = 0; j < num_feat; j++)
@@ -1046,6 +1069,7 @@ SVMLIGHTLIB_API int LoadMulticlassModelBinCallback(ReadByteCallback callback) //
 		ReadBytes(comment, comment_len, callback);
 		comment[comment_len] = 0;
 		svm_model->supvec[i] = create_example(-1, 0, 0, 0.0, create_svector(words, comment, 1.0));
+		svm_model->supvec[i]->fvec->kernel_id = kernel_id;
 		delete[] comment;
 	}
 	if (verbosity >= 1)
