@@ -75,14 +75,18 @@ int _svm_struct_learn (int argc, char* argv[])
   }
   
   /* Do the learning and return structmodel. */
-  if(alg_type == 1)
-    svm_learn_struct(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,hideo_env);
+  if(alg_type == 0)
+    svm_learn_struct(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,NSLACK_ALG,hideo_env);
+  else if(alg_type == 1)
+    svm_learn_struct(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,NSLACK_SHRINK_ALG,hideo_env);
   else if(alg_type == 2)
-    svm_learn_struct_joint(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,PRIMAL_ALG,hideo_env);
+    svm_learn_struct_joint(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,ONESLACK_PRIMAL_ALG,hideo_env);
   else if(alg_type == 3)
-    svm_learn_struct_joint(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,DUAL_ALG,hideo_env);
+    svm_learn_struct_joint(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,ONESLACK_DUAL_ALG,hideo_env);
   else if(alg_type == 4)
-    svm_learn_struct_joint(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,DUAL_CACHE_ALG,hideo_env);
+    svm_learn_struct_joint(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,ONESLACK_DUAL_CACHE_ALG,hideo_env);
+  else if(alg_type == 9)
+    svm_learn_struct_joint_custom(sample,&struct_parm,&learn_parm,&kernel_parm,&structmodel,hideo_env);
   else
     exit(1);
 
@@ -149,14 +153,18 @@ int svm_struct_learn (int argc, char* argv[], SAMPLE *sample, STRUCTMODEL *model
 //  //sample=&_sample;
   
   /* Do the learning and return structmodel. */
-  if(alg_type == 1)
-    svm_learn_struct(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,hideo_env);
+  if(alg_type == 0)
+    svm_learn_struct(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,NSLACK_ALG,hideo_env);
+  else if(alg_type == 1)
+    svm_learn_struct(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,NSLACK_SHRINK_ALG,hideo_env);
   else if(alg_type == 2)
-    svm_learn_struct_joint(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,PRIMAL_ALG,hideo_env);
+    svm_learn_struct_joint(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,ONESLACK_PRIMAL_ALG,hideo_env);
   else if(alg_type == 3)
-    svm_learn_struct_joint(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,DUAL_ALG,hideo_env);
+    svm_learn_struct_joint(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,ONESLACK_DUAL_ALG,hideo_env);
   else if(alg_type == 4)
-    svm_learn_struct_joint(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,DUAL_CACHE_ALG,hideo_env);
+    svm_learn_struct_joint(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,ONESLACK_DUAL_CACHE_ALG,hideo_env);
+  else if(alg_type == 9)
+    svm_learn_struct_joint_custom(*sample,struct_parm,&learn_parm,&kernel_parm,&structmodel,hideo_env);
   else
     exit(1);
 
@@ -196,6 +204,7 @@ void svm_struct_main_read_input_parameters(int argc,char *argv[],char *trainfile
   struct_parm->loss_type=DEFAULT_RESCALING;
   struct_parm->newconstretrain=100;
   struct_parm->ccache_size=5;
+  struct_parm->batch_size=100;
 
   strcpy (modelfile, "svm_struct_model");
   strcpy (learn_parm->predfile, "trans_predictions");
@@ -247,6 +256,7 @@ void svm_struct_main_read_input_parameters(int argc,char *argv[],char *trainfile
       case 'q': i++; learn_parm->svm_maxqpsize=atol(argv[i]); break;
       case 'l': i++; struct_parm->loss_function=atol(argv[i]); break;
       case 'f': i++; struct_parm->ccache_size=atol(argv[i]); break;
+	  case 'b': i++; struct_parm->batch_size=atof(argv[i]); break;
       case 't': i++; kernel_parm->kernel_type=atol(argv[i]); break;
       case 'd': i++; kernel_parm->poly_degree=atol(argv[i]); break;
       case 'g': i++; kernel_parm->rbf_gamma=atof(argv[i]); break;
@@ -312,8 +322,8 @@ void svm_struct_main_read_input_parameters(int argc,char *argv[],char *trainfile
     svm_struct_main_print_help();
     exit(0);
   }
-  if(((*alg_type) < 1) || ((*alg_type) > 4)) {
-    printf("\nAlgorithm type must be either '1', '2', '3', or '4'!\n\n");
+  if(((*alg_type) < 0) || (((*alg_type) > 5) && ((*alg_type) != 9))) {
+    printf("\nAlgorithm type must be either '0', '1', '2', '3', '4', or '9'!\n\n");
     svm_struct_main_wait_any_key();
     svm_struct_main_print_help();
     exit(0);
@@ -333,6 +343,19 @@ void svm_struct_main_read_input_parameters(int argc,char *argv[],char *trainfile
   }
   if(struct_parm->epsilon<=0) {
     printf("\nThe epsilon parameter must be greater than zero!\n\n");
+    svm_struct_main_wait_any_key();
+    svm_struct_main_print_help();
+    exit(0);
+  }
+  if((struct_parm->ccache_size<=0) && ((*alg_type) == 4)) {
+    printf("\nThe cache size must be at least 1!\n\n");
+    svm_struct_main_wait_any_key();
+    svm_struct_main_print_help();
+    exit(0);
+  }
+  if(((struct_parm->batch_size<=0) || (struct_parm->batch_size>100))  
+     && ((*alg_type) == 4)) {
+    printf("\nThe batch size must be in the interval ]0,100]!\n\n");
     svm_struct_main_wait_any_key();
     svm_struct_main_print_help();
     exit(0);
@@ -581,11 +604,11 @@ void svm_struct_main_print_help()
   printf("         example_file-> file with training data\n");
   printf("         model_file  -> file to store learned decision rule in\n");
 
-  printf("General options:\n");
+  printf("General Options:\n");
   printf("         -?          -> this help\n");
   printf("         -v [0..3]   -> verbosity level (default 1)\n");
   printf("         -y [0..3]   -> verbosity level for svm_light (default 0)\n");
-  printf("Learning options:\n");
+  printf("Learning Options:\n");
   printf("         -c float    -> C: trade-off between training error\n");
   printf("                        and margin (default 0.01)\n");
   printf("         -p [1,2]    -> L-norm to use for slack variables. Use 1 for L1-norm,\n");
@@ -596,8 +619,37 @@ void svm_struct_main_print_help()
   printf("                        (default %d)\n",DEFAULT_RESCALING);
   printf("         -l [0..]    -> Loss function to use.\n");
   printf("                        0: zero/one loss\n");
+  printf("                        ?: see below in application specific options\n");
   printf("                        (default %d)\n",DEFAULT_LOSS_FCT);
-  printf("Kernel options:\n");
+  printf("Optimization Options (see [2][5]):\n");
+  printf("         -w [0,..,9] -> choice of structural learning algorithm (default %d):\n",(int)DEFAULT_ALG_TYPE);
+  printf("                        0: n-slack algorithm described in [2]\n");
+  printf("                        1: n-slack algorithm with shrinking heuristic\n");
+  printf("                        2: 1-slack algorithm (primal) described in [5]\n");
+  printf("                        3: 1-slack algorithm (dual) described in [5]\n");
+  printf("                        4: 1-slack algorithm (dual) with constraint cache [5]\n");
+  printf("                        9: custom algorithm in svm_struct_learn_custom.c\n");
+  printf("         -e float    -> epsilon: allow that tolerance for termination\n");
+  printf("                        criterion (default %f)\n",DEFAULT_EPS);
+  printf("         -k [1..]    -> number of new constraints to accumulate before\n"); 
+  printf("                        recomputing the QP solution (default 100) (-w 0 and 1 only)\n");
+  printf("         -f [5..]    -> number of constraints to cache for each example\n");
+  printf("                        (default 5) (used with -w 4)\n");
+  printf("         -b [1..100] -> percentage of training set for which to refresh cache\n");
+  printf("                        when no epsilon violated constraint can be constructed\n");
+  printf("                        from current cache (default 100%%) (used with -w 4)\n");
+  printf("SVM-light Options for Solving QP Subproblems (see [3]):\n");
+  printf("         -n [2..q]   -> number of new variables entering the working set\n");
+  printf("                        in each svm-light iteration (default n = q). \n");
+  printf("                        Set n < q to prevent zig-zagging.\n");
+  printf("         -m [5..]    -> size of svm-light cache for kernel evaluations in MB\n");
+  printf("                        (default 40) (used only for -w 1 with kernels)\n");
+  printf("         -h [5..]    -> number of svm-light iterations a variable needs to be\n"); 
+  printf("                        optimal before considered for shrinking (default 100)\n");
+  printf("         -# int      -> terminate svm-light QP subproblem optimization, if no\n");
+  printf("                        progress after this number of iterations.\n");
+  printf("                        (default 100000)\n");
+  printf("Kernel Options:\n");
   printf("         -t int      -> type of kernel function:\n");
   printf("                        0: linear (default)\n");
   printf("                        1: polynomial (s a*b+c)^d\n");
@@ -609,32 +661,10 @@ void svm_struct_main_print_help()
   printf("         -s float    -> parameter s in sigmoid/poly kernel\n");
   printf("         -r float    -> parameter c in sigmoid/poly kernel\n");
   printf("         -u string   -> parameter of user defined kernel\n");
-  printf("Optimization options (see [2][3]):\n");
-  printf("         -w [1,2,3,4]-> choice of structural learning algorithm (default %d):\n",(int)DEFAULT_ALG_TYPE);
-  printf("                        1: algorithm described in [2]\n");
-  printf("                        2: joint constraint algorithm (primal) [to be published]\n");
-  printf("                        3: joint constraint algorithm (dual) [to be published]\n");
-  printf("                        4: joint constraint algorithm (dual) with constr. cache\n");
-  printf("         -q [2..]    -> maximum size of QP-subproblems (default 10)\n");
-  printf("         -n [2..q]   -> number of new variables entering the working set\n");
-  printf("                        in each iteration (default n = q). Set n<q to prevent\n");
-  printf("                        zig-zagging.\n");
-  printf("         -m [5..]    -> size of cache for kernel evaluations in MB (default 40)\n");
-  printf("                        (used only for -w 1 with kernels)\n");
-  printf("         -f [5..]    -> number of constraints to cache for each example\n");
-  printf("                        (default 5) (used with -w 4)\n");
-  printf("         -e float    -> eps: Allow that error for termination criterion\n");
-  printf("                        (default %f)\n",DEFAULT_EPS);
-  printf("         -h [5..]    -> number of iterations a variable needs to be\n"); 
-  printf("                        optimal before considered for shrinking (default 100)\n");
-  printf("         -k [1..]    -> number of new constraints to accumulate before\n"); 
-  printf("                        recomputing the QP solution (default 100) (-w 1 only)\n");
-  printf("         -# int      -> terminate QP subproblem optimization, if no progress\n");
-  printf("                        after this number of iterations. (default 100000)\n");
-  printf("Output options:\n");
+  printf("Output Options:\n");
   printf("         -a string   -> write all alphas to this file after learning\n");
   printf("                        (in the same order as in the training set)\n");
-  printf("Structure learning options:\n");
+  printf("Application-Specific Options:\n");
   print_struct_help();
   svm_struct_main_wait_any_key();
 
@@ -649,7 +679,9 @@ void svm_struct_main_print_help()
   printf("    A. Smola (ed.), MIT Press, 1999.\n");
   printf("[4] T. Joachims, Learning to Classify Text Using Support Vector\n");
   printf("    Machines: Methods, Theory, and Algorithms. Dissertation, Kluwer,\n");
-  printf("    2002.\n\n");
+  printf("    2002.\n");
+  printf("[5] T. Joachims, T. Finley, Chun-Nam Yu, Cutting-Plane Training of Structural\n");
+  printf("    SVMs, Machine Learning Journal, to appear.\n");
 }
 
 
