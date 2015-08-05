@@ -50,6 +50,7 @@ using namespace std;
 struct Label
 {
 	double m_class_or_value;
+	int m_query_id;
 	int m_num_scores;
 	double *m_scores;
 };
@@ -154,7 +155,7 @@ void ParseCommandLine(char *args, char ***argv, int *argc)
 	}
 }
 
-SVMLIGHTLIB_API int NewFeatureVector(int feature_count, int *features, float *weights, double _label)
+SVMLIGHTLIB_API int NewFeatureVector(int feature_count, int *features, float *weights, double _label, int query_id)
 {
 	SVECTOR *feature_vector = new SVECTOR();
 	feature_vector->userdefined = new char[1];
@@ -175,6 +176,7 @@ SVMLIGHTLIB_API int NewFeatureVector(int feature_count, int *features, float *we
 	label->m_class_or_value = _label;
 	label->m_num_scores = -1;
 	label->m_scores = NULL;
+	label->m_query_id = query_id;
 	LOCK(lock_feature_vectors);
 	feature_vector_id++;
 	feature_vectors.insert(pair<int, LabeledFeatureVector *>(feature_vector_id, new LabeledFeatureVector(label, feature_vector)));
@@ -272,7 +274,7 @@ SVMLIGHTLIB_API int TrainModel(char *_args, int feature_vector_count, int *featu
 		docs[i] = new DOC();
 		docs[i]->docnum = i;
 		docs[i]->costfactor = 1;
-		docs[i]->queryid = 0;
+		docs[i]->queryid = _feature_vector->first->m_query_id;
 		docs[i]->slackid = 0;
 		docs[i]->kernelid = i;
 		docs[i]->fvec = feature_vector;

@@ -33,7 +33,7 @@ namespace SvmLightLib
         // label is 1 or -1 for inductive binary SVM; 1, -1, or 0 (unlabeled) for transductive binary SVM; 
         // a positive integer for multiclass SVM; a real value for SVM regression
         [DllImport(SVMLIGHTLIB_DLL)]
-        public static extern int NewFeatureVector(int feature_count, int[] features, float[] weights, double label);
+        public static extern int NewFeatureVector(int feature_count, int[] features, float[] weights, double label, int query_id);
         [DllImport(SVMLIGHTLIB_DLL)]
         public static extern void DeleteFeatureVector(int id);
         [DllImport(SVMLIGHTLIB_DLL)]
@@ -96,5 +96,10 @@ namespace SvmLightLib
         public static extern void MulticlassClassify(int model_id, int feature_vector_count, int[] feature_vectors);
         [DllImport(SVMLIGHTLIB_DLL)]
         public static extern void DeleteMulticlassModel(int id);
+
+        public static int NewFeatureVector(int feature_count, int[] features, float[] weights, double label)
+        { 
+            return NewFeatureVector(feature_count, features, weights, label, /*query_id=*/0);
+        }
     }
 }

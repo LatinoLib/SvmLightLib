@@ -29,7 +29,7 @@ typedef char (__stdcall *ReadByteCallback)();
 
 // label is 1 or -1 for inductive binary SVM; 1, -1, or 0 (unlabeled) for transductive binary SVM; 
 // positive integer for multiclass SVM; real value for SVM regression
-SVMLIGHTLIB_API int NewFeatureVector(int feature_count, int *features, float *weights, double label);
+SVMLIGHTLIB_API int NewFeatureVector(int feature_count, int *features, float *weights, double label, int query_id);
 SVMLIGHTLIB_API void DeleteFeatureVector(int id);
 SVMLIGHTLIB_API int GetFeatureVectorFeatureCount(int feature_vector_id);
 SVMLIGHTLIB_API int GetFeatureVectorFeature(int feature_vector_id, int feature_idx);
