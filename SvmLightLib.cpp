@@ -396,9 +396,17 @@ SVMLIGHTLIB_API void SaveModelBin(int model_id, char *file_name) // modified wri
 				model_file.write((const char *)&vec->words[j].wnum, sizeof(FNUM));
 				model_file.write((const char *)&vec->words[j].weight, sizeof(FVAL)); 
 			}
-			int len = (int)strlen(vec->userdefined);
-			model_file.write((const char *)&len, sizeof(int));
-			model_file.write(vec->userdefined, len);
+			if (vec->userdefined)
+			{
+				int len = (int)strlen(vec->userdefined);
+				model_file.write((const char *)&len, sizeof(int));
+				model_file.write(vec->userdefined, len);
+			}
+			else
+			{
+				int len = 0;
+				model_file.write((const char *)&len, sizeof(int));
+			}
 		}
     }
 	model_file.close();
@@ -518,9 +526,17 @@ SVMLIGHTLIB_API void SaveModelBinCallback(int model_id, WriteByteCallback callba
 				WriteBytes((char *)&vec->words[j].wnum, sizeof(FNUM), callback);
 				WriteBytes((char *)&vec->words[j].weight, sizeof(FVAL), callback); 
 			}
-			int len = (int)strlen(vec->userdefined);
-			WriteBytes((char *)&len, sizeof(int), callback);
-			WriteBytes(vec->userdefined, len, callback);
+			if (vec->userdefined)
+			{
+				int len = (int)strlen(vec->userdefined);
+				WriteBytes((char *)&len, sizeof(int), callback);
+				WriteBytes(vec->userdefined, len, callback);
+			}
+			else
+			{
+				int len = 0;
+				WriteBytes((char *)&len, sizeof(int), callback);			
+			}
 		}
     }
 }
