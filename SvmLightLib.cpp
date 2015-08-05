@@ -709,12 +709,6 @@ SVMLIGHTLIB_API int GetSupportVectorIndex(int model_id, int sup_vec_idx)
 	return model->supvec[sup_vec_idx + 1]->docnum;
 }
 
-//SVMLIGHTLIB_API int GetKernelType(int model_id)
-//{
-//	MODEL *model = GetModel(model_id);
-//	return model->kernel_parm.kernel_type;
-//}
-
 SVMLIGHTLIB_API int GetFeatureCount(int model_id)
 {
 	MODEL *model = GetModel(model_id);
