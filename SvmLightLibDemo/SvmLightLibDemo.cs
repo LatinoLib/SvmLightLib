@@ -14,6 +14,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Globalization;
 using System.Diagnostics;
 
 namespace SvmLightLib.Demo
@@ -40,7 +41,7 @@ namespace SvmLightLib.Demo
             return mBuffer[mIdx++];
         }
 
-        private static List<int> ReadFeatureVectors(StreamReader reader)
+        private static int[] ReadFeatureVectors(StreamReader reader)
         {
             string line;
             List<int> feature_vectors = new List<int>();
@@ -51,22 +52,31 @@ namespace SvmLightLib.Demo
                     Match label_match = new Regex(@"^(?<label>[+-]?\d+([.]\d+)?)(\s|$)").Match(line);
                     Debug.Assert(label_match.Success);
                     int label = Convert.ToInt32(label_match.Result("${label}"));
-                    Match match = new Regex(@"(?<feature>\d+):(?<weight>[-]?[\d\.]+)").Match(line);                    
+                    Match match = new Regex(@"(?<feature>(\d+|qid)):(?<weight>[-]?[\d\.]+)", RegexOptions.IgnoreCase).Match(line);                    
                     List<int> features = new List<int>();
                     List<float> weights = new List<float>();
+                    int queryId = 0;
                     while (match.Success)
                     {
-                        int feature = Convert.ToInt32(match.Result("${feature}"));
-                        float weight = Convert.ToSingle(match.Result("${weight}"), System.Globalization.CultureInfo.InvariantCulture);
+                        string featureStr = match.Result("${feature}");
+                        if (featureStr.ToLower() != "qid")
+                        {
+                            int feature = Convert.ToInt32(featureStr);
+                            float weight = Convert.ToSingle(match.Result("${weight}"), CultureInfo.InvariantCulture);
+                            features.Add(feature);
+                            weights.Add(weight);
+                        }
+                        else 
+                        { 
+                            queryId = Convert.ToInt32(match.Result("${weight}"), CultureInfo.InvariantCulture); 
+                        }
                         match = match.NextMatch();
-                        features.Add(feature);
-                        weights.Add(weight);
                     }
-                    int vec_id = SvmLightLib.NewFeatureVector(features.Count, features.ToArray(), weights.ToArray(), label);
+                    int vec_id = SvmLightLib.NewFeatureVector(features.Count, features.ToArray(), weights.ToArray(), label, queryId);
                     feature_vectors.Add(vec_id);
                 }
             }
-            return feature_vectors;
+            return feature_vectors.ToArray();
         }
 
         public static void Main(string[] args)
@@ -75,10 +85,12 @@ namespace SvmLightLib.Demo
 
             Console.WriteLine("Testing SVM^light inductive mode (API) ...");
             Console.WriteLine("Training ...");
-            StreamReader reader = new StreamReader(@"..\..\Examples\Inductive\train.dat");
-            List<int> train_set = ReadFeatureVectors(reader);
-            reader.Close();
-            int model_id = SvmLightLib.TrainModel("", train_set.Count, train_set.ToArray());
+            int[] train_set;
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Inductive\train.dat"))
+            {
+                train_set = ReadFeatureVectors(reader);
+            }
+            int model_id = SvmLightLib.TrainModel("", train_set.Length, train_set);
             // test read/write callbacks
             SvmLightLib.WriteByteCallback wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveModelBinCallback(model_id, wb);
@@ -87,9 +99,11 @@ namespace SvmLightLib.Demo
             model_id = SvmLightLib.LoadModelBinCallback(rb);
             GC.KeepAlive(rb);
             Console.WriteLine("Classifying ...");
-            reader = new StreamReader(@"..\..\Examples\Inductive\test.dat");
-            List<int> test_set = ReadFeatureVectors(reader);
-            reader.Close();
+            int[] test_set;
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Inductive\test.dat"))
+            {
+                test_set = ReadFeatureVectors(reader);
+            }
             int correct = 0;
             foreach (int vec_id in test_set)
             {
@@ -100,21 +114,24 @@ namespace SvmLightLib.Demo
                 int predicted_lbl = result > 0 ? 1 : -1;
                 if (true_lbl == predicted_lbl) { correct++; }
             }
-            Console.WriteLine("Accuracy: {0:0.00}%", (double)correct / (double)test_set.Count * 100.0);
+            Console.WriteLine("Accuracy: {0:0.00}%", (double)correct / (double)test_set.Length * 100.0);
             Console.WriteLine("CHECK: Expected accuracy: 97.67%");
             // cleanup
             SvmLightLib.DeleteModel(model_id);
-            foreach (int vec_id in train_set) { SvmLightLib.DeleteFeatureVector(vec_id); }
-            foreach (int vec_id in test_set) { SvmLightLib.DeleteFeatureVector(vec_id); }
+            foreach (int[] arr in new int[][] { train_set, test_set }) foreach (int vec_id in arr)
+            {
+                SvmLightLib.DeleteFeatureVector(vec_id);
+            }
 
             // *** Test SVM^light transductive mode ***
 
-            Console.WriteLine("Testing SVM^light transductive mode ...");
+            Console.WriteLine("Testing SVM^light transductive mode (API) ...");
             Console.WriteLine("Training ...");
-            reader = new StreamReader(@"..\..\Examples\Transductive\train_transduction.dat");
-            train_set = ReadFeatureVectors(reader);
-            reader.Close();
-            model_id = SvmLightLib.TrainModel("", train_set.Count, train_set.ToArray());
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Transductive\train_transduction.dat"))
+            {
+                train_set = ReadFeatureVectors(reader);
+            }
+            model_id = SvmLightLib.TrainModel("", train_set.Length, train_set);
             // test read/write callbacks
             wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveModelBinCallback(model_id, wb);
@@ -123,9 +140,10 @@ namespace SvmLightLib.Demo
             model_id = SvmLightLib.LoadModelBinCallback(rb);
             GC.KeepAlive(rb);
             Console.WriteLine("Classifying ...");
-            reader = new StreamReader(@"..\..\Examples\Transductive\test.dat");
-            test_set = ReadFeatureVectors(reader);
-            reader.Close();
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Transductive\test.dat"))
+            {
+                test_set = ReadFeatureVectors(reader);
+            }
             correct = 0;
             foreach (int vec_id in test_set)
             {
@@ -136,12 +154,52 @@ namespace SvmLightLib.Demo
                 int predicted_lbl = result > 0 ? 1 : -1;
                 if (true_lbl == predicted_lbl) { correct++; }
             }
-            Console.WriteLine("Accuracy: {0:0.00}%", (double)correct / (double)test_set.Count * 100.0);
+            Console.WriteLine("Accuracy: {0:0.00}%", (double)correct / (double)test_set.Length * 100.0);
             Console.WriteLine("CHECK: Expected accuracy: 96.00%");
             // cleanup
             SvmLightLib.DeleteModel(model_id);
-            foreach (int vec_id in train_set) { SvmLightLib.DeleteFeatureVector(vec_id); }
-            foreach (int vec_id in test_set) { SvmLightLib.DeleteFeatureVector(vec_id); }
+            foreach (int[] arr in new int[][] { train_set, test_set }) foreach (int vec_id in arr)
+            {
+                SvmLightLib.DeleteFeatureVector(vec_id);
+            }
+
+            // *** Test SVM^light ranking mode ***
+        
+            Console.WriteLine("Testing SVM^light ranking mode (API) ...");
+            Console.WriteLine("Training ...");
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Ranking\train.dat")) 
+            { 
+                train_set = ReadFeatureVectors(reader); 
+            }
+            model_id = SvmLightLib.TrainModel("-z p", train_set.Length, train_set);
+            // test read/write callbacks
+            wb = new SvmLightLib.WriteByteCallback(Write);
+            SvmLightLib.SaveModelBinCallback(model_id, wb);
+            GC.KeepAlive(wb);
+            rb = new SvmLightLib.ReadByteCallback(Read);
+            model_id = SvmLightLib.LoadModelBinCallback(rb);
+            GC.KeepAlive(rb);
+            Console.WriteLine("Classifying ...");
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Ranking\test.dat"))
+            {
+                test_set = ReadFeatureVectors(reader);
+            }
+            correct = 0;
+            foreach (int vec_id in test_set)
+            {
+                SvmLightLib.Classify(model_id, 1, new int[] { vec_id });
+                Debug.Assert(SvmLightLib.GetFeatureVectorClassifScoreCount(vec_id) == 1);
+                double result = SvmLightLib.GetFeatureVectorClassifScore(vec_id, 0);
+                Console.Write(result.ToString("0.00 "));
+            }
+            Console.WriteLine();
+            Console.WriteLine("CHECK: Expected: 1.72 0.76 0.69 -0.49");
+            // cleanup
+            SvmLightLib.DeleteModel(model_id);
+            foreach (int[] arr in new int[][] { train_set, test_set }) foreach (int vec_id in arr)
+            {
+                SvmLightLib.DeleteFeatureVector(vec_id);
+            }
 
             // *** Test SVM^multiclass ***
             
@@ -152,10 +210,11 @@ namespace SvmLightLib.Demo
             SvmLightLib._MulticlassClassify(@"..\..\Examples\Multiclass\test.dat model ..\..\Examples\Multiclass\out.dat");
             Console.WriteLine("CHECK: Expected zero/one-error on test set: 32.80%");
             Console.WriteLine("Testing SVM^multiclass (API) ...");
-            reader = new StreamReader(@"..\..\Examples\Multiclass\train.dat");
-            train_set = ReadFeatureVectors(reader);
-            reader.Close();
-            model_id = SvmLightLib.TrainMulticlassModel("-c 5000", train_set.Count, train_set.ToArray());
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Multiclass\train.dat"))
+            {
+                train_set = ReadFeatureVectors(reader);
+            }
+            model_id = SvmLightLib.TrainMulticlassModel("-c 5000", train_set.Length, train_set);
             // test read/write callbacks
             wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveMulticlassModelBinCallback(model_id, wb);
@@ -164,9 +223,10 @@ namespace SvmLightLib.Demo
             model_id = SvmLightLib.LoadMulticlassModelBinCallback(rb);
             GC.KeepAlive(rb);
             Console.WriteLine("Classifying ...");
-            reader = new StreamReader(@"..\..\Examples\Multiclass\test.dat");
-            test_set = ReadFeatureVectors(reader);
-            reader.Close();
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Multiclass\test.dat"))
+            {
+                test_set = ReadFeatureVectors(reader);
+            }
             correct = 0;
             foreach (int vec_id in test_set)
             {
@@ -182,12 +242,14 @@ namespace SvmLightLib.Demo
                 }
                 if (true_lbl == predicted_lbl) { correct++; }
             }
-            Console.WriteLine("Accuracy: {0:0.00}%", (double)correct / (double)test_set.Count * 100.0);
+            Console.WriteLine("Accuracy: {0:0.00}%", (double)correct / (double)test_set.Length * 100.0);
             Console.WriteLine("CHECK: Expected accuracy: 67.20%");
             // cleanup
             SvmLightLib.DeleteMulticlassModel(model_id);
-            foreach (int vec_id in train_set) { SvmLightLib.DeleteFeatureVector(vec_id); }
-            foreach (int vec_id in test_set) { SvmLightLib.DeleteFeatureVector(vec_id); }
+            foreach (int[] arr in new int[][] { train_set, test_set }) foreach (int vec_id in arr)
+            {
+                SvmLightLib.DeleteFeatureVector(vec_id);
+            }
         }
     }
 }
