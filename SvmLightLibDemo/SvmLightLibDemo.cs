@@ -51,7 +51,7 @@ namespace SvmLightLib.Demo
                 {
                     Match label_match = new Regex(@"^(?<label>[+-]?\d+([.]\d+)?)(\s|$)").Match(line);
                     Debug.Assert(label_match.Success);
-                    int label = Convert.ToInt32(label_match.Result("${label}"));
+                    double label = Convert.ToDouble(label_match.Result("${label}"));
                     Match match = new Regex(@"(?<feature>(\d+|qid)):(?<weight>[-]?[\d\.]+)", RegexOptions.IgnoreCase).Match(line);                    
                     List<int> features = new List<int>();
                     List<float> weights = new List<float>();
@@ -81,9 +81,9 @@ namespace SvmLightLib.Demo
 
         public static void Main(string[] args)
         {
-            // *** Test SVM^light inductive mode ***
+            // *** Test SVM^light induction ***
 
-            Console.WriteLine("Testing SVM^light inductive mode (API) ...");
+            Console.WriteLine("Testing SVM^light induction (API) ...");
             Console.WriteLine("Training ...");
             int[] train_set;
             using (StreamReader reader = new StreamReader(@"..\..\Examples\Inductive\train.dat"))
@@ -127,10 +127,54 @@ namespace SvmLightLib.Demo
             {
                 SvmLightLib.DeleteFeatureVector(vec_id);
             }
+            
+            // *** Test SVM^light regression ***
 
-            // *** Test SVM^light transductive mode ***
+            Console.WriteLine("Testing SVM^light regression (API) ...");
+            Console.WriteLine("Training ...");
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Regression\train.dat"))
+            {
+                train_set = ReadFeatureVectors(reader);
+            }
+            model_id = SvmLightLib.TrainModel("-z r", train_set.Length, train_set);
+            // test read/write 
+            SvmLightLib.SaveModelBin(model_id, "model");
+            SvmLightLib.DeleteModel(model_id);
+            model_id = SvmLightLib.LoadModelBin("model");
+            // test read/write callbacks
+            wb = new SvmLightLib.WriteByteCallback(Write);
+            SvmLightLib.SaveModelBinCallback(model_id, wb);
+            GC.KeepAlive(wb);
+            SvmLightLib.DeleteModel(model_id);
+            rb = new SvmLightLib.ReadByteCallback(Read);
+            model_id = SvmLightLib.LoadModelBinCallback(rb);
+            GC.KeepAlive(rb);
+            Console.WriteLine("Classifying ...");
+            using (StreamReader reader = new StreamReader(@"..\..\Examples\Regression\test.dat"))
+            {
+                test_set = ReadFeatureVectors(reader);
+            }
+            double mae = 0;
+            foreach (int vec_id in test_set)
+            {
+                double true_lbl = SvmLightLib.GetFeatureVectorLabel(vec_id);
+                SvmLightLib.Classify(model_id, 1, new int[] { vec_id });
+                Debug.Assert(SvmLightLib.GetFeatureVectorClassifScoreCount(vec_id) == 1);
+                double result = SvmLightLib.GetFeatureVectorClassifScore(vec_id, 0);
+                mae += Math.Abs(true_lbl - result);
+            }
+            Console.WriteLine("MAE: {0:0.00}", mae / (double)test_set.Length);
+            Console.WriteLine("CHECK: Expected MAE: 27.32");
+            // cleanup
+            SvmLightLib.DeleteModel(model_id);
+            foreach (int[] arr in new int[][] { train_set, test_set }) foreach (int vec_id in arr)
+            {
+                SvmLightLib.DeleteFeatureVector(vec_id);
+            }
 
-            Console.WriteLine("Testing SVM^light transductive mode (API) ...");
+            // *** Test SVM^light transduction ***
+
+            Console.WriteLine("Testing SVM^light transduction (API) ...");
             Console.WriteLine("Training ...");
             using (StreamReader reader = new StreamReader(@"..\..\Examples\Transductive\train_transduction.dat"))
             {
@@ -173,9 +217,9 @@ namespace SvmLightLib.Demo
                 SvmLightLib.DeleteFeatureVector(vec_id);
             }
 
-            // *** Test SVM^light ranking mode ***
+            // *** Test SVM^light preference ranking ***
         
-            Console.WriteLine("Testing SVM^light ranking mode (API) ...");
+            Console.WriteLine("Testing SVM^light preference ranking (API) ...");
             Console.WriteLine("Training ...");
             using (StreamReader reader = new StreamReader(@"..\..\Examples\Ranking\train.dat")) 
             { 
