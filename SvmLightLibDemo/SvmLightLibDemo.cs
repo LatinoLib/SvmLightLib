@@ -91,10 +91,15 @@ namespace SvmLightLib.Demo
                 train_set = ReadFeatureVectors(reader);
             }
             int model_id = SvmLightLib.TrainModel("", train_set.Length, train_set);
+            // test read/write 
+            SvmLightLib.SaveModelBin(model_id, "model");
+            SvmLightLib.DeleteModel(model_id);
+            model_id = SvmLightLib.LoadModelBin("model");
             // test read/write callbacks
             SvmLightLib.WriteByteCallback wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveModelBinCallback(model_id, wb);
             GC.KeepAlive(wb);
+            SvmLightLib.DeleteModel(model_id);
             SvmLightLib.ReadByteCallback rb = new SvmLightLib.ReadByteCallback(Read);
             model_id = SvmLightLib.LoadModelBinCallback(rb);
             GC.KeepAlive(rb);
@@ -132,10 +137,15 @@ namespace SvmLightLib.Demo
                 train_set = ReadFeatureVectors(reader);
             }
             model_id = SvmLightLib.TrainModel("", train_set.Length, train_set);
+            // test read/write 
+            SvmLightLib.SaveModelBin(model_id, "model");
+            SvmLightLib.DeleteModel(model_id);
+            model_id = SvmLightLib.LoadModelBin("model");
             // test read/write callbacks
             wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveModelBinCallback(model_id, wb);
             GC.KeepAlive(wb);
+            SvmLightLib.DeleteModel(model_id);
             rb = new SvmLightLib.ReadByteCallback(Read);
             model_id = SvmLightLib.LoadModelBinCallback(rb);
             GC.KeepAlive(rb);
@@ -172,10 +182,15 @@ namespace SvmLightLib.Demo
                 train_set = ReadFeatureVectors(reader); 
             }
             model_id = SvmLightLib.TrainModel("-z p", train_set.Length, train_set);
+            // test read/write 
+            SvmLightLib.SaveModelBin(model_id, "model");
+            SvmLightLib.DeleteModel(model_id);
+            model_id = SvmLightLib.LoadModelBin("model");
             // test read/write callbacks
             wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveModelBinCallback(model_id, wb);
             GC.KeepAlive(wb);
+            SvmLightLib.DeleteModel(model_id);
             rb = new SvmLightLib.ReadByteCallback(Read);
             model_id = SvmLightLib.LoadModelBinCallback(rb);
             GC.KeepAlive(rb);
@@ -215,10 +230,15 @@ namespace SvmLightLib.Demo
                 train_set = ReadFeatureVectors(reader);
             }
             model_id = SvmLightLib.TrainMulticlassModel("-c 5000", train_set.Length, train_set);
+            // test read/write 
+            SvmLightLib.SaveMulticlassModelBin(model_id, "model");
+            SvmLightLib.DeleteMulticlassModel(model_id);
+            model_id = SvmLightLib.LoadMulticlassModelBin("model");
             // test read/write callbacks
             wb = new SvmLightLib.WriteByteCallback(Write);
             SvmLightLib.SaveMulticlassModelBinCallback(model_id, wb);
             GC.KeepAlive(wb);
+            SvmLightLib.DeleteMulticlassModel(model_id);
             rb = new SvmLightLib.ReadByteCallback(Read);
             model_id = SvmLightLib.LoadMulticlassModelBinCallback(rb);
             GC.KeepAlive(rb);
